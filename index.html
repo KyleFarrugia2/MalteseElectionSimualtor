@@ -178,6 +178,37 @@
           <p class="legend-note">Based on Malta's official 13 electoral districts. Malta towns are assigned individually; Gozo counts as one district (5 seats). Split localities such as Birkirkara and Naxxar appear under their primary district.</p>
         </section>
 
+        <section class="panel simulate-panel">
+          <h2>Odds Simulation</h2>
+          <p class="simulate-desc" id="sim-desc">
+            Choose a simulation mode, set PL or PN odds, then simulate.
+          </p>
+          <div class="sim-mode-pick" role="group" aria-label="Simulation mode">
+            <button type="button" id="sim-mode-swing" class="sim-mode-btn is-active" aria-pressed="true">Swing towns</button>
+            <button type="button" id="sim-mode-election" class="sim-mode-btn" aria-pressed="false">Win election</button>
+          </div>
+          <div class="odds-party-pick" role="group" aria-label="Favoured party odds">
+            <button type="button" id="sim-party-pl" class="odds-party-btn odds-party-pl is-active" aria-pressed="true">PL odds</button>
+            <button type="button" id="sim-party-pn" class="odds-party-btn odds-party-pn" aria-pressed="false">PN odds</button>
+          </div>
+          <label class="odds-control" for="sim-odds">
+            <span class="odds-label" id="sim-odds-label">PL win chance in swing towns</span>
+            <div class="odds-row">
+              <input
+                type="range"
+                id="sim-odds"
+                class="odds-slider"
+                min="25"
+                max="75"
+                value="52"
+                aria-describedby="sim-odds-value"
+              />
+              <output id="sim-odds-value" class="odds-value" for="sim-odds">52%</output>
+            </div>
+          </label>
+          <button type="button" id="simulate-btn" class="btn btn-simulate btn-full">Simulate Election</button>
+        </section>
+
         <div class="panel actions">
           <p id="submit-error" class="submit-error" hidden></p>
           <button type="button" id="reset-btn" class="btn btn-secondary">Reset Map</button>
@@ -198,7 +229,7 @@
   <dialog id="result-modal" class="result-modal">
     <div class="modal-content">
       <button type="button" class="modal-close" id="close-modal" aria-label="Close">&times;</button>
-      <p class="modal-eyebrow">Election Result</p>
+      <p class="modal-eyebrow" id="result-eyebrow">Election Result</p>
       <h2 id="result-headline"></h2>
       <p id="result-seats" class="result-seats"></p>
       <div id="result-winner" class="result-winner"></div>

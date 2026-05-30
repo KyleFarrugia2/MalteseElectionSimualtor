@@ -42,6 +42,9 @@ const ELECTION_AUDIO = {
   unassignedSubmit: "AreYouSure/omni-man-are-you-sure-sound-effect_RjhkhH8Y.mp3",
 };
 
+const SIM_FIXED_PL = ["amrun", "siggiewi"];
+const SIM_FIXED_PN = ["sliema", "san-giljan", "san-gwann"];
+
 const MAP_COLORS = {
   none: { fill: "#cbd5e1", stroke: "#64748b" },
   pl: { fill: "#ef4444", stroke: "#fecaca" },
@@ -81,10 +84,94 @@ const unassignedEl = document.getElementById("unassigned-towns");
 
 const resetBtn = document.getElementById("reset-btn");
 const submitBtn = document.getElementById("submit-btn");
+const simulateBtn = document.getElementById("simulate-btn");
+const simOddsInput = document.getElementById("sim-odds");
+const simOddsValue = document.getElementById("sim-odds-value");
+const simOddsLabel = document.getElementById("sim-odds-label");
+const simPartyPlBtn = document.getElementById("sim-party-pl");
+const simPartyPnBtn = document.getElementById("sim-party-pn");
+const simModeSwingBtn = document.getElementById("sim-mode-swing");
+const simModeElectionBtn = document.getElementById("sim-mode-election");
+const simDescEl = document.getElementById("sim-desc");
+const resultEyebrowEl = document.getElementById("result-eyebrow");
 const submitErrorEl = document.getElementById("submit-error");
 const resultModal = document.getElementById("result-modal");
 const closeModalBtn = document.getElementById("close-modal");
 const modalOkBtn = document.getElementById("modal-ok");
+
+let simOddsParty = "pl";
+let simMode = "swing";
+
+function getSimOddsConfig() {
+  const percent = Number(simOddsInput?.value ?? 52);
+  const plChance =
+    simOddsParty === "pl" ? percent / 100 : 1 - percent / 100;
+  return { party: simOddsParty, percent, plChance, mode: simMode };
+}
+
+function syncOddsControls() {
+  const isSwingMode = simMode === "swing";
+
+  if (simDescEl) {
+    simDescEl.textContent = isSwingMode
+      ? "Each swing locality is assigned randomly by your chosen odds. Fixed strongholds always apply."
+      : "Rolls whether your chosen party wins the election (33+ seats), then fills the map to match.";
+  }
+
+  if (simOddsLabel) {
+    if (isSwingMode) {
+      simOddsLabel.textContent =
+        simOddsParty === "pl"
+          ? "PL win chance in swing towns"
+          : "PN win chance in swing towns";
+    } else {
+      simOddsLabel.textContent =
+        simOddsParty === "pl"
+          ? "PL chance to win the election"
+          : "PN chance to win the election";
+    }
+  }
+
+  if (simOddsValue && simOddsInput) {
+    simOddsValue.textContent = `${simOddsInput.value}%`;
+  }
+
+  if (simPartyPlBtn && simPartyPnBtn) {
+    simPartyPlBtn.classList.toggle("is-active", simOddsParty === "pl");
+    simPartyPnBtn.classList.toggle("is-active", simOddsParty === "pn");
+    simPartyPlBtn.setAttribute("aria-pressed", simOddsParty === "pl");
+    simPartyPnBtn.setAttribute("aria-pressed", simOddsParty === "pn");
+  }
+
+  if (simModeSwingBtn && simModeElectionBtn) {
+    simModeSwingBtn.classList.toggle("is-active", isSwingMode);
+    simModeElectionBtn.classList.toggle("is-active", !isSwingMode);
+    simModeSwingBtn.setAttribute("aria-pressed", isSwingMode);
+    simModeElectionBtn.setAttribute("aria-pressed", !isSwingMode);
+  }
+
+  if (simOddsInput) {
+    simOddsInput.min = isSwingMode ? "25" : "15";
+    simOddsInput.max = isSwingMode ? "75" : "85";
+    if (Number(simOddsInput.value) < Number(simOddsInput.min)) {
+      simOddsInput.value = simOddsInput.min;
+    }
+    if (Number(simOddsInput.value) > Number(simOddsInput.max)) {
+      simOddsInput.value = simOddsInput.max;
+    }
+    simOddsInput.classList.toggle("odds-slider-pn", simOddsParty === "pn");
+  }
+}
+
+function setSimOddsParty(party) {
+  simOddsParty = party === "pn" ? "pn" : "pl";
+  syncOddsControls();
+}
+
+function setSimMode(mode) {
+  simMode = mode === "election" ? "election" : "swing";
+  syncOddsControls();
+}
 
 function init() {
   mapData = window.DISTRICT_MAP;
@@ -121,6 +208,7 @@ function init() {
   updateTally();
   bindControls();
   bindMapZoom();
+  syncOddsControls();
 }
 
 function getMapSvg() {
@@ -765,6 +853,11 @@ function renderTownPicker() {
   });
 }
 
+function assignCouncil(councilId, party) {
+  councilStates.set(councilId, party);
+  paintCouncil(councilId, party);
+}
+
 function cycleCouncil(councilId) {
   const now = Date.now();
   if (lastClick.id === councilId && now - lastClick.time < 250) {
@@ -774,8 +867,7 @@ function cycleCouncil(councilId) {
 
   const current = councilStates.get(councilId) || "none";
   const next = CLICK_ORDER[(CLICK_ORDER.indexOf(current) + 1) % CLICK_ORDER.length];
-  councilStates.set(councilId, next);
-  paintCouncil(councilId, next);
+  assignCouncil(councilId, next);
   updateTally();
 }
 
@@ -957,9 +1049,19 @@ function focusUnassignedCouncil(councilId) {
 function bindControls() {
   resetBtn.addEventListener("click", resetMap);
   submitBtn.addEventListener("click", submitElection);
+  simulateBtn?.addEventListener("click", simulateElection);
   closeModalBtn.addEventListener("click", () => resultModal.close());
   modalOkBtn.addEventListener("click", () => resultModal.close());
   resultModal.addEventListener("close", stopElectionAudio);
+
+  simPartyPlBtn?.addEventListener("click", () => setSimOddsParty("pl"));
+  simPartyPnBtn?.addEventListener("click", () => setSimOddsParty("pn"));
+  simModeSwingBtn?.addEventListener("click", () => setSimMode("swing"));
+  simModeElectionBtn?.addEventListener("click", () => setSimMode("election"));
+
+  if (simOddsInput) {
+    simOddsInput.addEventListener("input", syncOddsControls);
+  }
 
   const townSearch = document.getElementById("town-search");
   if (townSearch) {
@@ -1021,6 +1123,157 @@ function renderDistrictResultRow(row) {
   `;
 }
 
+function showElectionResults(options = {}) {
+  const {
+    isSimulation = false,
+    favouredParty = "pl",
+    favouredPercent = 52,
+    simMode: resultMode = "swing",
+  } = options;
+  const { plSeats, pnSeats, breakdown } = calculateSeatTotals();
+
+  const headline = document.getElementById("result-headline");
+  const seatsSummary = document.getElementById("result-seats");
+  const winnerEl = document.getElementById("result-winner");
+  const breakdownEl = document.getElementById("result-breakdown");
+
+  breakdownEl.innerHTML = breakdown.map(renderDistrictResultRow).join("");
+  winnerEl.className = "result-winner";
+
+  let electionWinner = null;
+  const favouredLabel = favouredParty === "pl" ? "PL" : "PN";
+  const oddsNote = isSimulation
+    ? resultMode === "election"
+      ? `${favouredPercent}% ${favouredLabel} chance to win the election`
+      : `${favouredPercent}% ${favouredLabel} swing town odds`
+    : "";
+
+  if (resultEyebrowEl) {
+    resultEyebrowEl.textContent = isSimulation ? "Simulated Result" : "Election Result";
+  }
+
+  if (plSeats >= MAJORITY) {
+    headline.textContent = isSimulation
+      ? `Simulation: ${PARTIES.pl.leader} projected to win`
+      : `${PARTIES.pl.leader} wins`;
+    seatsSummary.textContent = isSimulation
+      ? `Partit Laburista — ${plSeats} of 65 seats projected (${oddsNote})`
+      : `Partit Laburista — ${plSeats} of 65 seats (33 needed for a majority)`;
+    winnerEl.classList.add("pl-win");
+    winnerEl.innerHTML = winnerMarkup("pl");
+    electionWinner = "pl";
+  } else if (pnSeats >= MAJORITY) {
+    headline.textContent = isSimulation
+      ? `Simulation: ${PARTIES.pn.leader} projected to win`
+      : `${PARTIES.pn.leader} wins`;
+    seatsSummary.textContent = isSimulation
+      ? `Partit Nazzjonalista — ${pnSeats} of 65 seats projected (${oddsNote})`
+      : `Partit Nazzjonalista — ${pnSeats} of 65 seats (33 needed for a majority)`;
+    winnerEl.classList.add("pn-win");
+    winnerEl.innerHTML = winnerMarkup("pn");
+    electionWinner = "pn";
+  } else {
+    headline.textContent = isSimulation ? "Simulation: Hung parliament" : "Hung parliament";
+    seatsSummary.textContent = isSimulation
+      ? `PL ${plSeats} · PN ${pnSeats} seats — no majority (${oddsNote})`
+      : `PL ${plSeats} seats · PN ${pnSeats} seats — no majority reached`;
+    winnerEl.classList.add("tie");
+    winnerEl.innerHTML = `
+      <div class="winner-badge">?</div>
+      <div>
+        <h3>${isSimulation ? "Too close to call" : "No clear winner"}</h3>
+        <p>Neither party reached 33 seats.</p>
+      </div>
+    `;
+  }
+
+  if (!resultModal.open) {
+    resultModal.showModal();
+  }
+
+  if (electionWinner) {
+    playElectionAudio(electionWinner);
+  }
+}
+
+function applyFixedStrongholds() {
+  SIM_FIXED_PL.forEach((councilId) => assignCouncil(councilId, "pl"));
+  SIM_FIXED_PN.forEach((councilId) => assignCouncil(councilId, "pn"));
+}
+
+function getSwingCouncilIds() {
+  const fixed = new Set([...SIM_FIXED_PL, ...SIM_FIXED_PN]);
+  const ids = getMaltaCouncils()
+    .filter((council) => !fixed.has(council.id))
+    .map((council) => council.id);
+
+  if (!fixed.has(GOZO_ID)) {
+    ids.push(GOZO_ID);
+  }
+
+  return ids;
+}
+
+function hasMajority(party) {
+  const { plSeats, pnSeats } = calculateSeatTotals();
+  return party === "pl" ? plSeats >= MAJORITY : pnSeats >= MAJORITY;
+}
+
+function simulateSwingTownsMode(plChance) {
+  applyFixedStrongholds();
+
+  getSwingCouncilIds().forEach((councilId) => {
+    assignCouncil(councilId, Math.random() < plChance ? "pl" : "pn");
+  });
+}
+
+function simulateElectionWinMode(party, percent) {
+  applyFixedStrongholds();
+
+  const favouredWins = Math.random() < percent / 100;
+  const targetParty = favouredWins ? party : party === "pl" ? "pn" : "pl";
+  const swingIds = getSwingCouncilIds();
+  let plBias = targetParty === "pl" ? 0.58 : 0.42;
+
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    swingIds.forEach((councilId) => {
+      assignCouncil(councilId, Math.random() < plBias ? "pl" : "pn");
+    });
+
+    if (hasMajority(targetParty)) {
+      return;
+    }
+
+    plBias =
+      targetParty === "pl"
+        ? Math.min(0.92, plBias + 0.03)
+        : Math.max(0.08, plBias - 0.03);
+  }
+
+  swingIds.forEach((councilId) => assignCouncil(councilId, targetParty));
+}
+
+function simulateElection() {
+  clearSubmitError();
+  stopElectionAudio();
+
+  const { party, percent, plChance, mode } = getSimOddsConfig();
+
+  if (mode === "election") {
+    simulateElectionWinMode(party, percent);
+  } else {
+    simulateSwingTownsMode(plChance);
+  }
+
+  updateTally();
+  showElectionResults({
+    isSimulation: true,
+    favouredParty: party,
+    favouredPercent: percent,
+    simMode: mode,
+  });
+}
+
 function submitElection() {
   clearSubmitError();
 
@@ -1040,51 +1293,7 @@ function submitElection() {
   }
 
   try {
-    const { plSeats, pnSeats, breakdown } = calculateSeatTotals();
-
-    const headline = document.getElementById("result-headline");
-    const seatsSummary = document.getElementById("result-seats");
-    const winnerEl = document.getElementById("result-winner");
-    const breakdownEl = document.getElementById("result-breakdown");
-
-    breakdownEl.innerHTML = breakdown.map(renderDistrictResultRow).join("");
-
-    winnerEl.className = "result-winner";
-
-    let electionWinner = null;
-
-    if (plSeats >= MAJORITY) {
-      headline.textContent = `${PARTIES.pl.leader} wins`;
-      seatsSummary.textContent = `Partit Laburista — ${plSeats} of 65 seats (33 needed for a majority)`;
-      winnerEl.classList.add("pl-win");
-      winnerEl.innerHTML = winnerMarkup("pl");
-      electionWinner = "pl";
-    } else if (pnSeats >= MAJORITY) {
-      headline.textContent = `${PARTIES.pn.leader} wins`;
-      seatsSummary.textContent = `Partit Nazzjonalista — ${pnSeats} of 65 seats (33 needed for a majority)`;
-      winnerEl.classList.add("pn-win");
-      winnerEl.innerHTML = winnerMarkup("pn");
-      electionWinner = "pn";
-    } else {
-      headline.textContent = "Hung parliament";
-      seatsSummary.textContent = `PL ${plSeats} seats · PN ${pnSeats} seats — no majority reached`;
-      winnerEl.classList.add("tie");
-      winnerEl.innerHTML = `
-      <div class="winner-badge">?</div>
-      <div>
-        <h3>No clear winner</h3>
-        <p>Neither party reached 33 seats.</p>
-      </div>
-    `;
-    }
-
-    if (!resultModal.open) {
-      resultModal.showModal();
-    }
-
-    if (electionWinner) {
-      playElectionAudio(electionWinner);
-    }
+    showElectionResults({ isSimulation: false });
   } catch (error) {
     showSubmitError("Something went wrong showing the results. Please refresh and try again.");
     console.error(error);
