@@ -63,8 +63,12 @@ const MAP_ZOOM_MIN = 1;
 const MAP_ZOOM_MAX = 8;
 let mapBaseViewBox = null;
 let mapViewState = null;
-let mapPanSession = null;
-let mapTouchPinch = null;
+let mapPointerSession = null;
+let mapActivePointers = new Map();
+let mapPinchSession = null;
+let mapBlockClick = false;
+
+const MAP_PAN_THRESHOLD = 8;
 
 const plSeatsEl = document.getElementById("pl-seats");
 const pnSeatsEl = document.getElementById("pn-seats");
@@ -185,6 +189,22 @@ function zoomMapAt(factor, clientX, clientY) {
   applyMapViewBox();
 }
 
+function panMapByScreenDelta(dx, dy, baseViewBox) {
+  const scaleX = baseViewBox.w / mapWrap.clientWidth;
+  const scaleY = baseViewBox.h / mapWrap.clientHeight;
+  mapViewState = clampMapViewBox(
+    baseViewBox.x - dx * scaleX,
+    baseViewBox.y - dy * scaleY,
+    baseViewBox.w,
+    baseViewBox.h
+  );
+  applyMapViewBox();
+}
+
+function shouldBlockMapClick() {
+  return mapBlockClick;
+}
+
 function bindMapZoom() {
   const svg = getMapSvg();
   if (!svg || !mapWrap || !mapData?.viewBox) return;
@@ -197,80 +217,140 @@ function bindMapZoom() {
     "wheel",
     (event) => {
       event.preventDefault();
-      const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+      const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
       zoomMapAt(factor, event.clientX, event.clientY);
     },
     { passive: false }
   );
 
-  mapWrap.addEventListener("mousedown", (event) => {
-    if (!event.shiftKey || event.button !== 0) return;
-    event.preventDefault();
-    mapPanSession = {
-      startX: event.clientX,
-      startY: event.clientY,
-      viewBox: { ...mapViewState },
-    };
-    mapWrap.classList.add("map-panning");
-  });
-
-  window.addEventListener("mousemove", (event) => {
-    if (!mapPanSession) return;
-
-    const scaleX = mapPanSession.viewBox.w / mapWrap.clientWidth;
-    const scaleY = mapPanSession.viewBox.h / mapWrap.clientHeight;
-    const dx = (event.clientX - mapPanSession.startX) * scaleX;
-    const dy = (event.clientY - mapPanSession.startY) * scaleY;
-
-    mapViewState = clampMapViewBox(
-      mapPanSession.viewBox.x - dx,
-      mapPanSession.viewBox.y - dy,
-      mapPanSession.viewBox.w,
-      mapPanSession.viewBox.h
-    );
-    applyMapViewBox();
-  });
-
-  window.addEventListener("mouseup", () => {
-    mapPanSession = null;
+  const clearPointerSession = () => {
+    mapPointerSession = null;
+    mapPinchSession = null;
     mapWrap.classList.remove("map-panning");
+  };
+
+  const getPinchMetrics = () => {
+    const points = [...mapActivePointers.values()];
+    if (points.length < 2) return null;
+    const [a, b] = points;
+    return {
+      distance: Math.hypot(b.x - a.x, b.y - a.y),
+      centerX: (a.x + b.x) / 2,
+      centerY: (a.y + b.y) / 2,
+    };
+  };
+
+  mapWrap.addEventListener("pointerdown", (event) => {
+    if (event.button > 0 || event.target.closest(".map-zoom-btn")) return;
+
+    mapActivePointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    if (mapActivePointers.size === 2) {
+      mapPointerSession = null;
+      const metrics = getPinchMetrics();
+      if (metrics) {
+        mapPinchSession = { ...metrics, viewBox: { ...mapViewState } };
+      }
+      return;
+    }
+
+    if (mapActivePointers.size === 1) {
+      mapPointerSession = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        viewBox: { ...mapViewState },
+        panning: false,
+      };
+      mapWrap.setPointerCapture(event.pointerId);
+    }
   });
 
   mapWrap.addEventListener(
-    "touchstart",
+    "pointermove",
     (event) => {
-      if (event.touches.length === 2) {
-        const [a, b] = event.touches;
-        mapTouchPinch = {
-          distance: Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
-          centerX: (a.clientX + b.clientX) / 2,
-          centerY: (a.clientY + b.clientY) / 2,
-        };
-      }
-    },
-    { passive: true }
-  );
+      if (!mapActivePointers.has(event.pointerId)) return;
 
-  mapWrap.addEventListener(
-    "touchmove",
-    (event) => {
-      if (event.touches.length !== 2 || !mapTouchPinch) return;
+      mapActivePointers.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      if (mapActivePointers.size >= 2) {
+        const metrics = getPinchMetrics();
+        if (!metrics || !mapPinchSession) return;
+
+        event.preventDefault();
+        const factor = metrics.distance / mapPinchSession.distance;
+        if (Math.abs(factor - 1) > 0.008) {
+          zoomMapAt(factor, metrics.centerX, metrics.centerY);
+          mapPinchSession.distance = metrics.distance;
+          mapPinchSession.centerX = metrics.centerX;
+          mapPinchSession.centerY = metrics.centerY;
+        }
+        return;
+      }
+
+      if (
+        !mapPointerSession ||
+        event.pointerId !== mapPointerSession.pointerId
+      ) {
+        return;
+      }
+
+      const dx = event.clientX - mapPointerSession.startX;
+      const dy = event.clientY - mapPointerSession.startY;
+
+      if (!mapPointerSession.panning) {
+        if (Math.hypot(dx, dy) < MAP_PAN_THRESHOLD) return;
+        mapPointerSession.panning = true;
+        mapWrap.classList.add("map-panning");
+      }
+
       event.preventDefault();
-
-      const [a, b] = event.touches;
-      const distance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-      const factor = distance / mapTouchPinch.distance;
-      if (Math.abs(factor - 1) > 0.01) {
-        zoomMapAt(factor, mapTouchPinch.centerX, mapTouchPinch.centerY);
-        mapTouchPinch.distance = distance;
-      }
+      panMapByScreenDelta(dx, dy, mapPointerSession.viewBox);
     },
     { passive: false }
   );
 
-  mapWrap.addEventListener("touchend", () => {
-    mapTouchPinch = null;
-  });
+  const endPointer = (event) => {
+    mapActivePointers.delete(event.pointerId);
+
+    if (mapPointerSession?.pointerId === event.pointerId) {
+      if (mapPointerSession.panning) {
+        mapBlockClick = true;
+        window.setTimeout(() => {
+          mapBlockClick = false;
+        }, 50);
+      }
+      clearPointerSession();
+    }
+
+    if (mapActivePointers.size < 2) {
+      mapPinchSession = null;
+    }
+
+    if (mapActivePointers.size === 1) {
+      const remaining = [...mapActivePointers.entries()][0];
+      mapPointerSession = {
+        pointerId: remaining[0],
+        startX: remaining[1].x,
+        startY: remaining[1].y,
+        viewBox: { ...mapViewState },
+        panning: false,
+      };
+    }
+
+    if (mapWrap.hasPointerCapture?.(event.pointerId)) {
+      mapWrap.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  mapWrap.addEventListener("pointerup", endPointer);
+  mapWrap.addEventListener("pointercancel", endPointer);
 
   document.getElementById("map-zoom-in")?.addEventListener("click", () => {
     const rect = mapWrap.getBoundingClientRect();
@@ -519,6 +599,11 @@ function renderGozoGroup() {
 
 function bindCouncilInteraction(group, council) {
   group.addEventListener("click", (event) => {
+    if (shouldBlockMapClick()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     event.stopPropagation();
     cycleCouncil(council.id);
   });
