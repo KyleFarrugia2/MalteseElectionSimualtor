@@ -36,7 +36,10 @@ const GOZO_META = {
 };
 
 const ELECTION_AUDIO = {
-  victory: "Victory/victory-sound-effect_KsQZNCBl.mp3",
+  victorySounds: [
+    "Victory/victory-sound-effect_KsQZNCBl.mp3",
+    "Victory/VICTORY SOUND EFFECT -  FREE.mp3",
+  ],
   plWin: "Audio Clips/PL WIN.mp3",
   pnWin: "Audio Clips/PN WIN.mp3",
   unassignedSubmit: "AreYouSure/omni-man-are-you-sure-sound-effect_RjhkhH8Y.mp3",
@@ -55,6 +58,8 @@ const councilStates = new Map();
 let mapData = null;
 let lastClick = { id: null, time: 0 };
 let activeElectionAudio = [];
+let victorySoundPool = [];
+let lastVictorySoundPath = null;
 
 const councilsLayer = document.getElementById("councils-layer");
 const cominoLayer = document.getElementById("comino-layer");
@@ -978,6 +983,42 @@ function stopElectionAudio() {
   activeElectionAudio = [];
 }
 
+function shuffleVictorySoundPool() {
+  victorySoundPool = [...ELECTION_AUDIO.victorySounds];
+
+  for (let i = victorySoundPool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [victorySoundPool[i], victorySoundPool[j]] = [
+      victorySoundPool[j],
+      victorySoundPool[i],
+    ];
+  }
+
+  if (
+    victorySoundPool.length > 1 &&
+    victorySoundPool[0] === lastVictorySoundPath
+  ) {
+    [victorySoundPool[0], victorySoundPool[1]] = [
+      victorySoundPool[1],
+      victorySoundPool[0],
+    ];
+  }
+}
+
+function getNextVictorySound() {
+  if (!ELECTION_AUDIO.victorySounds.length) {
+    return null;
+  }
+
+  if (!victorySoundPool.length) {
+    shuffleVictorySoundPool();
+  }
+
+  const nextSound = victorySoundPool.pop();
+  lastVictorySoundPath = nextSound;
+  return nextSound;
+}
+
 function playElectionAudio(winner) {
   stopElectionAudio();
 
@@ -985,14 +1026,17 @@ function playElectionAudio(winner) {
     return;
   }
 
-  const victory = new Audio(encodeURI(ELECTION_AUDIO.victory));
+  const victoryPath = getNextVictorySound();
+  const victory = victoryPath ? new Audio(encodeURI(victoryPath)) : null;
   const partyWin = new Audio(
     encodeURI(winner === "pl" ? ELECTION_AUDIO.plWin : ELECTION_AUDIO.pnWin)
   );
 
-  activeElectionAudio = [victory, partyWin];
+  activeElectionAudio = victory ? [victory, partyWin] : [partyWin];
 
-  victory.play().catch(() => {});
+  if (victory) {
+    victory.play().catch(() => {});
+  }
   partyWin.play().catch(() => {});
 }
 
