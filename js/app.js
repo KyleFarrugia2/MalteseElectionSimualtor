@@ -58,8 +58,6 @@ const councilStates = new Map();
 let mapData = null;
 let lastClick = { id: null, time: 0 };
 let activeElectionAudio = [];
-let victorySoundPool = [];
-let lastVictorySoundPath = null;
 
 const councilsLayer = document.getElementById("councils-layer");
 const cominoLayer = document.getElementById("comino-layer");
@@ -983,40 +981,13 @@ function stopElectionAudio() {
   activeElectionAudio = [];
 }
 
-function shuffleVictorySoundPool() {
-  victorySoundPool = [...ELECTION_AUDIO.victorySounds];
-
-  for (let i = victorySoundPool.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [victorySoundPool[i], victorySoundPool[j]] = [
-      victorySoundPool[j],
-      victorySoundPool[i],
-    ];
-  }
-
-  if (
-    victorySoundPool.length > 1 &&
-    victorySoundPool[0] === lastVictorySoundPath
-  ) {
-    [victorySoundPool[0], victorySoundPool[1]] = [
-      victorySoundPool[1],
-      victorySoundPool[0],
-    ];
-  }
-}
-
 function getNextVictorySound() {
-  if (!ELECTION_AUDIO.victorySounds.length) {
+  const sounds = ELECTION_AUDIO.victorySounds;
+  if (!sounds.length) {
     return null;
   }
 
-  if (!victorySoundPool.length) {
-    shuffleVictorySoundPool();
-  }
-
-  const nextSound = victorySoundPool.pop();
-  lastVictorySoundPath = nextSound;
-  return nextSound;
+  return sounds[Math.floor(Math.random() * sounds.length)];
 }
 
 function playElectionAudio(winner) {
