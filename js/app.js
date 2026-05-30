@@ -264,8 +264,9 @@ function bindMapZoom() {
         startY: event.clientY,
         viewBox: { ...mapViewState },
         panning: false,
+        captured: false,
+        townGroup: event.target.closest(".town-group"),
       };
-      mapWrap.setPointerCapture(event.pointerId);
     }
   });
 
@@ -307,7 +308,12 @@ function bindMapZoom() {
       if (!mapPointerSession.panning) {
         if (Math.hypot(dx, dy) < MAP_PAN_THRESHOLD) return;
         mapPointerSession.panning = true;
+        mapPointerSession.townGroup = null;
         mapWrap.classList.add("map-panning");
+        if (!mapPointerSession.captured) {
+          mapWrap.setPointerCapture(event.pointerId);
+          mapPointerSession.captured = true;
+        }
       }
 
       event.preventDefault();
@@ -325,6 +331,15 @@ function bindMapZoom() {
         window.setTimeout(() => {
           mapBlockClick = false;
         }, 50);
+      } else if (mapPointerSession.townGroup) {
+        const councilId = mapPointerSession.townGroup.dataset.councilId;
+        if (councilId) {
+          cycleCouncil(councilId);
+          mapBlockClick = true;
+          window.setTimeout(() => {
+            mapBlockClick = false;
+          }, 300);
+        }
       }
       clearPointerSession();
     }
@@ -341,6 +356,8 @@ function bindMapZoom() {
         startY: remaining[1].y,
         viewBox: { ...mapViewState },
         panning: false,
+        captured: false,
+        townGroup: null,
       };
     }
 

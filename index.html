@@ -4,50 +4,44 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="Malta's 2026 general election simulator — assign towns to PL or PN and see who wins the 65-seat parliament." />
-  <meta name="theme-color" content="#070b14" />
+  <meta name="theme-color" content="#1e3a5f" />
   <title>General Election 2026 Simulator</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23070b14'/%3E%3Cpath d='M4 4h12v24H4z' fill='%23fff'/%3E%3Cpath d='M16 4h12v24H16z' fill='%23dc2626'/%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e3a5f'/%3E%3Cpath d='M4 4h12v24H4z' fill='%23fff'/%3E%3Cpath d='M16 4h12v24H16z' fill='%23dc2626'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Sans:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <div class="page-bg" aria-hidden="true">
-    <div class="page-grid"></div>
-    <div class="page-glow page-glow-pl"></div>
-    <div class="page-glow page-glow-pn"></div>
-  </div>
-
   <header class="site-header">
-    <div class="header-bar">
-      <div class="header-inner">
+    <div class="top-bar">
+      <div class="site-container header-inner">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">
             <span class="brand-mark-pl"></span>
             <span class="brand-mark-pn"></span>
           </div>
           <div>
-            <p class="eyebrow">Malta · 2026</p>
+            <p class="eyebrow">Malta General Election · 2026</p>
             <h1>General Election 2026 Simulator</h1>
           </div>
         </div>
         <div class="header-meta">
-          <span class="meta-badge meta-live"><span class="live-dot"></span> Live</span>
-          <span class="meta-badge">65 seats</span>
+          <span class="meta-badge">65 parliamentary seats</span>
           <span class="meta-badge">13 districts</span>
         </div>
       </div>
     </div>
-    <div class="header-sub-wrap">
-      <p class="header-sub">
-        Click each locality on the map to assign it to Partit Laburista (PL) or Partit Nazzjonalista (PN).
-        Seats are allocated proportionally within each district — 33 needed for a majority.
-      </p>
+    <div class="hero-strip">
+      <div class="site-container">
+        <p class="header-sub">
+          Assign each locality to PL or PN on the map below. Seats are allocated proportionally within every district — <strong>33 seats</strong> are needed for a majority.
+        </p>
+      </div>
     </div>
   </header>
 
-  <main class="main">
+  <main class="main site-container">
     <section class="panel map-panel">
       <div class="panel-head">
         <div>
@@ -194,9 +188,10 @@
   </main>
 
   <footer class="site-footer">
-    <div class="footer-inner">
+    <div class="site-container footer-inner">
+      <div class="footer-brand">Malta General Election 2026 Simulator</div>
       <p>Unofficial educational tool — not affiliated with the Electoral Commission of Malta.</p>
-      <p class="footer-meta">Map data: local council boundaries · Seat allocation: proportional within each district</p>
+      <p class="footer-meta">Local council map data · Proportional seat allocation per district</p>
     </div>
   </footer>
 
