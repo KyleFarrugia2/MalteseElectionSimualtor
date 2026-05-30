@@ -208,7 +208,7 @@ const DISPLAY_NAMES = {
   "Ta'Xbiex": "Ta' Xbiex",
   "Zebbug (Malta)": "Żebbuġ",
   "Zebbug (Gozo)": "Żebbuġ (Gozo)",
-  "Saint Paul's Bay": "St Paul's Bay",
+  "Saint Paul's Bay": "St. Paul's Bay",
   Gzira: "Gżira",
   "Santa Lucija": "Santa Luċija",
   "Santa Venera": "Santa Venera",
