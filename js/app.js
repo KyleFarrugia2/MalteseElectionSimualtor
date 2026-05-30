@@ -39,6 +39,7 @@ const ELECTION_AUDIO = {
   victory: "Victory/victory-sound-effect_KsQZNCBl.mp3",
   plWin: "Audio Clips/PL WIN.mp3",
   pnWin: "Audio Clips/PN WIN.mp3",
+  unassignedSubmit: "AreYouSure/omni-man-are-you-sure-sound-effect_RjhkhH8Y.mp3",
 };
 
 const MAP_COLORS = {
@@ -903,6 +904,14 @@ function playElectionAudio(winner) {
   partyWin.play().catch(() => {});
 }
 
+function playUnassignedSubmitAudio() {
+  stopElectionAudio();
+
+  const clip = new Audio(encodeURI(ELECTION_AUDIO.unassignedSubmit));
+  activeElectionAudio = [clip];
+  clip.play().catch(() => {});
+}
+
 function showSubmitError(message) {
   if (!submitErrorEl) return;
   submitErrorEl.textContent = message;
@@ -1026,6 +1035,7 @@ function submitElection() {
       `Assign every town and Gozo before submitting. ${unassigned} ${label} still unassigned — use the map or search below.`
     );
     focusUnassignedCouncil(getFirstUnassignedCouncilId());
+    playUnassignedSubmitAudio();
     return;
   }
 
