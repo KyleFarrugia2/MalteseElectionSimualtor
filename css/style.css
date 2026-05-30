@@ -333,6 +333,68 @@ h1 {
   box-shadow:
     inset 0 0 60px rgba(0, 0, 0, 0.5),
     0 0 40px rgba(59, 130, 246, 0.08);
+  background: #0a3d5c;
+}
+
+.map-wrap.map-panning {
+  cursor: grabbing;
+}
+
+.map-wrap.map-panning #malta-map {
+  cursor: grabbing;
+}
+
+.map-wrap.map-expanded,
+.map-wrap.map-fullscreen-active {
+  position: fixed;
+  inset: 0.75rem;
+  z-index: 100;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+}
+
+.map-wrap:fullscreen {
+  border-radius: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0.75rem;
+  background: #0a1628;
+}
+
+.map-zoom-controls {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.map-zoom-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgba(203, 213, 225, 0.25);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fff;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.map-zoom-btn:hover {
+  background: rgba(30, 41, 59, 0.95);
+  transform: scale(1.05);
+}
+
+.map-zoom-btn:active {
+  transform: scale(0.98);
 }
 
 .map-wrap::after {
@@ -347,9 +409,16 @@ h1 {
 #malta-map {
   display: block;
   width: 100%;
-  min-height: min(68vh, 620px);
+  min-height: min(85vh, 920px);
   height: auto;
-  touch-action: manipulation;
+  touch-action: none;
+}
+
+.map-wrap.map-fullscreen-active #malta-map,
+.map-wrap:fullscreen #malta-map,
+.map-wrap.map-expanded #malta-map {
+  min-height: calc(100vh - 1.5rem);
+  height: 100%;
 }
 
 .map-ocean {

@@ -57,7 +57,14 @@ const cominoLayer = document.getElementById("comino-layer");
 const labelsLayer = document.getElementById("labels-layer");
 const townPicker = document.getElementById("town-picker");
 const tooltip = document.getElementById("map-tooltip");
-const mapWrap = document.querySelector(".map-wrap");
+const mapWrap = document.getElementById("map-wrap");
+
+const MAP_ZOOM_MIN = 1;
+const MAP_ZOOM_MAX = 8;
+let mapBaseViewBox = null;
+let mapViewState = null;
+let mapPanSession = null;
+let mapTouchPinch = null;
 
 const plSeatsEl = document.getElementById("pl-seats");
 const pnSeatsEl = document.getElementById("pn-seats");
@@ -108,6 +115,204 @@ function init() {
   renderTownPicker();
   updateTally();
   bindControls();
+  bindMapZoom();
+}
+
+function getMapSvg() {
+  return document.getElementById("malta-map");
+}
+
+function clampMapViewBox(x, y, w, h) {
+  const minW = mapBaseViewBox.w / MAP_ZOOM_MAX;
+  const minH = mapBaseViewBox.h / MAP_ZOOM_MAX;
+  w = Math.max(minW, Math.min(mapBaseViewBox.w, w));
+  h = Math.max(minH, Math.min(mapBaseViewBox.h, h));
+
+  const padX = w * 0.05;
+  const padY = h * 0.05;
+  const minX = mapBaseViewBox.x - padX;
+  const maxX = mapBaseViewBox.x + mapBaseViewBox.w - w + padX;
+  const minY = mapBaseViewBox.y - padY;
+  const maxY = mapBaseViewBox.y + mapBaseViewBox.h - h + padY;
+
+  return {
+    x: Math.min(maxX, Math.max(minX, x)),
+    y: Math.min(maxY, Math.max(minY, y)),
+    w,
+    h,
+  };
+}
+
+function applyMapViewBox() {
+  const svg = getMapSvg();
+  if (!svg || !mapViewState) return;
+  svg.setAttribute(
+    "viewBox",
+    `${mapViewState.x} ${mapViewState.y} ${mapViewState.w} ${mapViewState.h}`
+  );
+}
+
+function resetMapViewBox() {
+  mapViewState = { ...mapBaseViewBox };
+  applyMapViewBox();
+}
+
+function screenPointToSvg(clientX, clientY) {
+  const svg = getMapSvg();
+  if (!svg) return null;
+
+  const point = svg.createSVGPoint();
+  point.x = clientX;
+  point.y = clientY;
+  const matrix = svg.getScreenCTM();
+  if (!matrix) return null;
+  return point.matrixTransform(matrix.inverse());
+}
+
+function zoomMapAt(factor, clientX, clientY) {
+  if (!mapViewState) return;
+
+  const svgPoint = screenPointToSvg(clientX, clientY);
+  if (!svgPoint) return;
+
+  const current = mapViewState;
+  const nextW = current.w / factor;
+  const nextH = current.h / factor;
+  const nextX = svgPoint.x - ((svgPoint.x - current.x) * nextW) / current.w;
+  const nextY = svgPoint.y - ((svgPoint.y - current.y) * nextH) / current.h;
+
+  mapViewState = clampMapViewBox(nextX, nextY, nextW, nextH);
+  applyMapViewBox();
+}
+
+function bindMapZoom() {
+  const svg = getMapSvg();
+  if (!svg || !mapWrap || !mapData?.viewBox) return;
+
+  const parts = mapData.viewBox.split(/\s+/).map(Number);
+  mapBaseViewBox = { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
+  resetMapViewBox();
+
+  mapWrap.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+      zoomMapAt(factor, event.clientX, event.clientY);
+    },
+    { passive: false }
+  );
+
+  mapWrap.addEventListener("mousedown", (event) => {
+    if (!event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    mapPanSession = {
+      startX: event.clientX,
+      startY: event.clientY,
+      viewBox: { ...mapViewState },
+    };
+    mapWrap.classList.add("map-panning");
+  });
+
+  window.addEventListener("mousemove", (event) => {
+    if (!mapPanSession) return;
+
+    const scaleX = mapPanSession.viewBox.w / mapWrap.clientWidth;
+    const scaleY = mapPanSession.viewBox.h / mapWrap.clientHeight;
+    const dx = (event.clientX - mapPanSession.startX) * scaleX;
+    const dy = (event.clientY - mapPanSession.startY) * scaleY;
+
+    mapViewState = clampMapViewBox(
+      mapPanSession.viewBox.x - dx,
+      mapPanSession.viewBox.y - dy,
+      mapPanSession.viewBox.w,
+      mapPanSession.viewBox.h
+    );
+    applyMapViewBox();
+  });
+
+  window.addEventListener("mouseup", () => {
+    mapPanSession = null;
+    mapWrap.classList.remove("map-panning");
+  });
+
+  mapWrap.addEventListener(
+    "touchstart",
+    (event) => {
+      if (event.touches.length === 2) {
+        const [a, b] = event.touches;
+        mapTouchPinch = {
+          distance: Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
+          centerX: (a.clientX + b.clientX) / 2,
+          centerY: (a.clientY + b.clientY) / 2,
+        };
+      }
+    },
+    { passive: true }
+  );
+
+  mapWrap.addEventListener(
+    "touchmove",
+    (event) => {
+      if (event.touches.length !== 2 || !mapTouchPinch) return;
+      event.preventDefault();
+
+      const [a, b] = event.touches;
+      const distance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      const factor = distance / mapTouchPinch.distance;
+      if (Math.abs(factor - 1) > 0.01) {
+        zoomMapAt(factor, mapTouchPinch.centerX, mapTouchPinch.centerY);
+        mapTouchPinch.distance = distance;
+      }
+    },
+    { passive: false }
+  );
+
+  mapWrap.addEventListener("touchend", () => {
+    mapTouchPinch = null;
+  });
+
+  document.getElementById("map-zoom-in")?.addEventListener("click", () => {
+    const rect = mapWrap.getBoundingClientRect();
+    zoomMapAt(1.35, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  });
+
+  document.getElementById("map-zoom-out")?.addEventListener("click", () => {
+    const rect = mapWrap.getBoundingClientRect();
+    zoomMapAt(1 / 1.35, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  });
+
+  document.getElementById("map-zoom-reset")?.addEventListener("click", resetMapViewBox);
+
+  const fullscreenBtn = document.getElementById("map-fullscreen");
+  fullscreenBtn?.addEventListener("click", () => {
+    if (document.fullscreenElement === mapWrap) {
+      document.exitFullscreen?.();
+      return;
+    }
+
+    if (mapWrap.requestFullscreen) {
+      mapWrap.requestFullscreen();
+      return;
+    }
+
+    mapWrap.classList.toggle("map-expanded");
+    fullscreenBtn.setAttribute(
+      "aria-label",
+      mapWrap.classList.contains("map-expanded")
+        ? "Exit expanded map"
+        : "Fullscreen map"
+    );
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    const isFullscreen = document.fullscreenElement === mapWrap;
+    mapWrap.classList.toggle("map-fullscreen-active", isFullscreen);
+    fullscreenBtn?.setAttribute(
+      "aria-label",
+      isFullscreen ? "Exit fullscreen map" : "Fullscreen map"
+    );
+  });
 }
 
 function getMaltaCouncils() {

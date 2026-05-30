@@ -54,9 +54,15 @@
           <h2>Electoral Map</h2>
           <p class="panel-desc">Malta &amp; Gozo local council boundaries</p>
         </div>
-        <p class="hint"><kbd>1×</kbd> PL &nbsp;·&nbsp; <kbd>2×</kbd> PN &nbsp;·&nbsp; <kbd>3×</kbd> reset</p>
+        <p class="hint"><kbd>1×</kbd> PL · <kbd>2×</kbd> PN · <kbd>3×</kbd> reset · scroll to zoom · <kbd>Shift</kbd>+drag to pan</p>
       </div>
-      <div class="map-wrap">
+      <div class="map-wrap" id="map-wrap">
+        <div class="map-zoom-controls" aria-label="Map zoom controls">
+          <button type="button" id="map-zoom-in" class="map-zoom-btn" title="Zoom in" aria-label="Zoom in">+</button>
+          <button type="button" id="map-zoom-out" class="map-zoom-btn" title="Zoom out" aria-label="Zoom out">−</button>
+          <button type="button" id="map-zoom-reset" class="map-zoom-btn" title="Reset view" aria-label="Reset map view">⟲</button>
+          <button type="button" id="map-fullscreen" class="map-zoom-btn" title="Fullscreen map" aria-label="Fullscreen map">⛶</button>
+        </div>
         <svg id="malta-map" viewBox="0 0 960 580" role="img" aria-label="Interactive map of Malta and Gozo towns">
           <defs>
             <linearGradient id="ocean-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
