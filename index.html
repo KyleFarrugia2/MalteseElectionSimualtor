@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Malta's 2026 general election simulator — assign towns to PL or PN and see who wins the 65-seat parliament." />
+  <meta name="theme-color" content="#070b14" />
+  <title>General Election 2026 Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23070b14'/%3E%3Cpath d='M4 4h12v24H4z' fill='%23fff'/%3E%3Cpath d='M16 4h12v24H16z' fill='%23dc2626'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="page-bg" aria-hidden="true">
+    <div class="page-grid"></div>
+    <div class="page-glow page-glow-pl"></div>
+    <div class="page-glow page-glow-pn"></div>
+  </div>
+
+  <header class="site-header">
+    <div class="header-bar">
+      <div class="header-inner">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span class="brand-mark-pl"></span>
+            <span class="brand-mark-pn"></span>
+          </div>
+          <div>
+            <p class="eyebrow">Malta · 2026</p>
+            <h1>General Election 2026 Simulator</h1>
+          </div>
+        </div>
+        <div class="header-meta">
+          <span class="meta-badge meta-live"><span class="live-dot"></span> Live</span>
+          <span class="meta-badge">65 seats</span>
+          <span class="meta-badge">13 districts</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-sub-wrap">
+      <p class="header-sub">
+        Click each locality on the map to assign it to Partit Laburista (PL) or Partit Nazzjonalista (PN).
+        Seats are allocated proportionally within each district — 33 needed for a majority.
+      </p>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="panel map-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Electoral Map</h2>
+          <p class="panel-desc">Malta &amp; Gozo local council boundaries</p>
+        </div>
+        <p class="hint"><kbd>1×</kbd> PL &nbsp;·&nbsp; <kbd>2×</kbd> PN &nbsp;·&nbsp; <kbd>3×</kbd> reset</p>
+      </div>
+      <div class="map-wrap">
+        <svg id="malta-map" viewBox="0 0 960 580" role="img" aria-label="Interactive map of Malta and Gozo towns">
+          <defs>
+            <linearGradient id="ocean-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0c4a6e" />
+              <stop offset="50%" stop-color="#0e5a82" />
+              <stop offset="100%" stop-color="#0a3d5c" />
+            </linearGradient>
+            <filter id="district-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#fff" flood-opacity="0.55" />
+            </filter>
+            <filter id="map-vignette" x="-10%" y="-10%" width="120%" height="120%">
+              <feGaussianBlur stdDeviation="18" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="atop" />
+            </filter>
+          </defs>
+          <rect class="map-ocean" width="960" height="580" fill="url(#ocean-gradient)" />
+          <g id="comino-layer"></g>
+          <g id="councils-layer"></g>
+          <g id="labels-layer"></g>
+        </svg>
+        <div id="map-tooltip" class="map-tooltip" hidden></div>
+      </div>
+      <div class="town-picker-wrap">
+        <div class="picker-toolbar">
+          <p class="picker-title">Browse by district</p>
+          <input
+            type="search"
+            id="town-search"
+            class="town-search"
+            placeholder="Search a locality…"
+            aria-label="Search localities"
+            autocomplete="off"
+          />
+        </div>
+        <div id="town-picker" class="town-picker"></div>
+      </div>
+    </section>
+
+    <div class="controls-grid">
+      <aside class="sidebar">
+        <section class="panel leaders-panel">
+          <h2>Prime Minister Candidates</h2>
+          <div class="leaders">
+            <article class="leader-card leader-pl">
+              <img
+                class="leader-photo"
+                src="images/Robert-PL.jpg"
+                alt="Robert Abela, Partit Laburista leader"
+                width="72"
+                height="72"
+              />
+              <div>
+                <p class="party-name">Partit Laburista</p>
+                <h3>Robert Abela</h3>
+              </div>
+            </article>
+            <article class="leader-card leader-pn">
+              <img
+                class="leader-photo"
+                src="images/alex-pn.jpg"
+                alt="Alex Borg, Partit Nazzjonalista leader"
+                width="72"
+                height="72"
+              />
+              <div>
+                <p class="party-name">Partit Nazzjonalista</p>
+                <h3>Alex Borg</h3>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel tally-panel">
+          <div class="panel-title-row">
+            <h2>Live Tally</h2>
+            <span class="majority-chip">33 to win</span>
+          </div>
+          <div class="tally-bars">
+            <div class="tally-row">
+              <span class="tally-label pl">PL seats</span>
+              <span id="pl-seats" class="tally-value">0</span>
+            </div>
+            <div class="bar-track">
+              <div id="pl-bar" class="bar-fill pl-fill" style="width: 0%"></div>
+            </div>
+            <div class="tally-row">
+              <span class="tally-label pn">PN seats</span>
+              <span id="pn-seats" class="tally-value">0</span>
+            </div>
+            <div class="bar-track">
+              <div id="pn-bar" class="bar-fill pn-fill" style="width: 0%"></div>
+            </div>
+          </div>
+          <dl class="stats">
+            <div>
+              <dt>Towns for PL</dt>
+              <dd id="pl-towns">0</dd>
+            </div>
+            <div>
+              <dt>Towns for PN</dt>
+              <dd id="pn-towns">0</dd>
+            </div>
+            <div>
+              <dt>Unassigned</dt>
+              <dd id="unassigned-towns">0</dd>
+            </div>
+          </dl>
+          <p class="majority-note">5 MPs per district · 33 needed for a majority</p>
+        </section>
+
+        <section class="panel legend-panel">
+          <h2>How It Works</h2>
+          <ul class="legend-list">
+            <li><span class="swatch neutral"></span> Unassigned</li>
+            <li><span class="swatch pl"></span> Partit Laburista (Robert Abela)</li>
+            <li><span class="swatch pn"></span> Partit Nazzjonalista (Alex Borg)</li>
+          </ul>
+          <p class="legend-note">Based on Malta's official 13 electoral districts. Malta towns are assigned individually; Gozo counts as one district (5 seats). Split localities such as Birkirkara and Naxxar appear under their primary district.</p>
+        </section>
+
+        <div class="panel actions">
+          <p id="submit-error" class="submit-error" hidden></p>
+          <button type="button" id="reset-btn" class="btn btn-secondary">Reset Map</button>
+          <button type="button" id="submit-btn" class="btn btn-primary">Submit Election</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>Unofficial educational tool — not affiliated with the Electoral Commission of Malta.</p>
+      <p class="footer-meta">Map data: local council boundaries · Seat allocation: proportional within each district</p>
+    </div>
+  </footer>
+
+  <dialog id="result-modal" class="result-modal">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="close-modal" aria-label="Close">&times;</button>
+      <p class="modal-eyebrow">Election Result</p>
+      <h2 id="result-headline"></h2>
+      <p id="result-seats" class="result-seats"></p>
+      <div id="result-winner" class="result-winner"></div>
+      <h3 class="result-breakdown-title">Where seats were won</h3>
+      <ul id="result-breakdown" class="result-breakdown"></ul>
+      <button type="button" class="btn btn-primary btn-full" id="modal-ok">Back to Map</button>
+    </div>
+  </dialog>
+
+  <script src="js/district-map-data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
