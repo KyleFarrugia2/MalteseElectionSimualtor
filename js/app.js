@@ -152,7 +152,7 @@ function syncOddsControls() {
 
   if (simOddsInput) {
     simOddsInput.min = "1";
-    simOddsInput.max = isSwingMode ? "75" : "85";
+    simOddsInput.max = "100";
     if (Number(simOddsInput.value) < Number(simOddsInput.min)) {
       simOddsInput.value = simOddsInput.min;
     }
