@@ -133,33 +133,11 @@
       <aside class="sidebar">
         <section class="panel leaders-panel">
           <h2>Prime Minister Candidates</h2>
-          <div class="leaders">
-            <article class="leader-card leader-pl">
-              <img
-                class="leader-photo"
-                src="images/Robert-PL.jpg"
-                alt="Robert Abela, Partit Laburista leader"
-                width="72"
-                height="72"
-              />
-              <div>
-                <p class="party-name">Partit Laburista</p>
-                <h3>Robert Abela</h3>
-              </div>
-            </article>
-            <article class="leader-card leader-pn">
-              <img
-                class="leader-photo"
-                src="images/alex-pn.jpg"
-                alt="Alex Borg, Partit Nazzjonalista leader"
-                width="72"
-                height="72"
-              />
-              <div>
-                <p class="party-name">Partit Nazzjonalista</p>
-                <h3>Alex Borg</h3>
-              </div>
-            </article>
+          <p class="leaders-desc">Default matchup: Robert Abela vs Alex Borg. Use Change candidate to pick from all party candidates.</p>
+          <div class="candidate-duel" id="candidate-duel">
+            <article class="selected-candidate selected-candidate-pl" id="selected-pl-candidate"></article>
+            <span class="candidate-vs" aria-hidden="true">VS</span>
+            <article class="selected-candidate selected-candidate-pn" id="selected-pn-candidate"></article>
           </div>
         </section>
 
@@ -205,8 +183,8 @@
           <h2>How It Works</h2>
           <ul class="legend-list">
             <li><span class="swatch neutral"></span> Unassigned</li>
-            <li><span class="swatch pl"></span> Partit Laburista (Robert Abela)</li>
-            <li><span class="swatch pn"></span> Partit Nazzjonalista (Alex Borg)</li>
+            <li><span class="swatch pl"></span> <span id="legend-pl-candidate">Partit Laburista (Robert Abela)</span></li>
+            <li><span class="swatch pn"></span> <span id="legend-pn-candidate">Partit Nazzjonalista (Alex Borg)</span></li>
           </ul>
           <p class="legend-note">Based on Malta's official 13 electoral districts. Malta towns are assigned individually; Gozo counts as one district (5 seats). Split localities such as Birkirkara and Naxxar appear under their primary district.</p>
         </section>
@@ -258,6 +236,16 @@
       <p class="footer-meta">Local council map data · Proportional seat allocation per district</p>
     </div>
   </footer>
+
+  <dialog id="candidate-picker-modal" class="candidate-picker-modal">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="close-candidate-picker" aria-label="Close">&times;</button>
+      <p class="modal-eyebrow">Candidate picker</p>
+      <h2 id="candidate-picker-title">Choose candidate</h2>
+      <p class="candidate-picker-desc">Select a party candidate.</p>
+      <div id="candidate-picker-list" class="candidate-picker-list" role="listbox"></div>
+    </div>
+  </dialog>
 
   <dialog id="result-modal" class="result-modal">
     <div class="modal-content">

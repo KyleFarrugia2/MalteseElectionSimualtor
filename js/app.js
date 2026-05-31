@@ -2,27 +2,86 @@ const SEATS_PER_DISTRICT = 5;
 const TOTAL_SEATS = 65;
 const MAJORITY = 33;
 
-const LEADER_IMAGES = {
-  pl: "images/Robert-PL.jpg",
-  pn: "images/alex-pn.jpg",
-};
-
 const PARTIES = {
   none: { id: "none", label: "Unassigned", short: "—" },
   pl: {
     id: "pl",
     label: "Partit Laburista",
     short: "PL",
-    leader: "Robert Abela",
-    image: LEADER_IMAGES.pl,
   },
   pn: {
     id: "pn",
     label: "Partit Nazzjonalista",
     short: "PN",
-    leader: "Alex Borg",
-    image: LEADER_IMAGES.pn,
   },
+};
+
+const PARTY_CANDIDATES = {
+  pl: [
+    {
+      id: "robert-abela",
+      name: "Robert Abela",
+      image: "images/Robert-PL.jpg",
+      winAudio: "Audio Clips/PL WIN.mp3",
+      era: "current",
+    },
+    {
+      id: "joseph-muscat",
+      name: "Joseph Muscat",
+      image: "images/Joseph-Muscat-PL.jpg",
+      winAudio: null,
+      era: "past",
+    },
+    {
+      id: "clifton-grima",
+      name: "Clifton Grima",
+      image: "images/Clifton-Grima-PL.jpg",
+      winAudio: null,
+      era: "current",
+    },
+    {
+      id: "chris-fearne",
+      name: "Chris Fearne",
+      image: "images/Chris-Fearne-PL.jpg",
+      winAudio: null,
+      era: "current",
+    },
+  ],
+  pn: [
+    {
+      id: "alex-borg",
+      name: "Alex Borg",
+      image: "images/alex-pn.jpg",
+      winAudio: "Audio Clips/PN WIN.mp3",
+      era: "current",
+    },
+    {
+      id: "bernard-grech",
+      name: "Bernard Grech",
+      image: "images/Bernard-Grech-PN.jpg",
+      winAudio: null,
+      era: "current",
+    },
+    {
+      id: "adrian-delia",
+      name: "Adrian Delia",
+      image: "images/Adrian-Delia-PN.jpg",
+      winAudio: null,
+      era: "current",
+    },
+    {
+      id: "lawrence-gonzi",
+      name: "Lawrence Gonzi",
+      image: "images/Lawrence-Gonzi-PN.jpg",
+      winAudio: null,
+      era: "past",
+    },
+  ],
+};
+
+const selectedCandidates = {
+  pl: "robert-abela",
+  pn: "alex-borg",
 };
 
 const CLICK_ORDER = ["none", "pl", "pn"];
@@ -40,8 +99,6 @@ const ELECTION_AUDIO = {
     "Victory/victory-sound-effect_KsQZNCBl.mp3",
     "Victory/VICTORY SOUND EFFECT -  FREE.mp3",
   ],
-  plWin: "Audio Clips/PL WIN.mp3",
-  pnWin: "Audio Clips/PN WIN.mp3",
   unassignedSubmit: "AreYouSure/omni-man-are-you-sure-sound-effect_RjhkhH8Y.mp3",
 };
 
@@ -101,9 +158,31 @@ const submitErrorEl = document.getElementById("submit-error");
 const resultModal = document.getElementById("result-modal");
 const closeModalBtn = document.getElementById("close-modal");
 const modalOkBtn = document.getElementById("modal-ok");
+const candidatePickerModal = document.getElementById("candidate-picker-modal");
+const closeCandidatePickerBtn = document.getElementById("close-candidate-picker");
+const candidatePickerTitleEl = document.getElementById("candidate-picker-title");
+const candidatePickerListEl = document.getElementById("candidate-picker-list");
 
 let simOddsParty = "pl";
 let simMode = "swing";
+let candidatePickerParty = null;
+
+function getSelectedCandidate(party) {
+  const candidates = PARTY_CANDIDATES[party];
+  const match = candidates.find(
+    (candidate) => candidate.id === selectedCandidates[party]
+  );
+  return match || candidates[0];
+}
+
+function getPartyDisplay(party) {
+  const candidate = getSelectedCandidate(party);
+  return {
+    ...PARTIES[party],
+    leader: candidate.name,
+    image: candidate.image,
+  };
+}
 
 function getSimOddsConfig() {
   const percent = Number(simOddsInput?.value ?? 52);
@@ -209,6 +288,7 @@ function init() {
   paintCouncil(GOZO_ID, "none");
   renderTownPicker();
   updateTally();
+  renderSelectedCandidates();
   bindControls();
   bindMapZoom();
   syncOddsControls();
@@ -997,18 +1077,23 @@ function playElectionAudio(winner) {
     return;
   }
 
+  const candidate = getSelectedCandidate(winner);
+  const clips = [];
   const victoryPath = getNextVictorySound();
-  const victory = victoryPath ? new Audio(encodeURI(victoryPath)) : null;
-  const partyWin = new Audio(
-    encodeURI(winner === "pl" ? ELECTION_AUDIO.plWin : ELECTION_AUDIO.pnWin)
-  );
 
-  activeElectionAudio = victory ? [victory, partyWin] : [partyWin];
-
-  if (victory) {
+  if (victoryPath) {
+    const victory = new Audio(encodeURI(victoryPath));
+    clips.push(victory);
     victory.play().catch(() => {});
   }
-  partyWin.play().catch(() => {});
+
+  if (candidate.winAudio) {
+    const partyWin = new Audio(encodeURI(candidate.winAudio));
+    clips.push(partyWin);
+    partyWin.play().catch(() => {});
+  }
+
+  activeElectionAudio = clips;
 }
 
 function playUnassignedSubmitAudio() {
@@ -1069,6 +1154,26 @@ function bindControls() {
   modalOkBtn.addEventListener("click", () => resultModal.close());
   resultModal.addEventListener("close", stopElectionAudio);
 
+  document.getElementById("candidate-duel")?.addEventListener("click", (event) => {
+    const button = event.target.closest(".btn-change-candidate");
+    if (!button) return;
+    openCandidatePicker(button.dataset.party);
+  });
+
+  candidatePickerListEl?.addEventListener("click", (event) => {
+    const button = event.target.closest(".candidate-picker-option");
+    if (!button || !candidatePickerParty) return;
+    setSelectedCandidate(candidatePickerParty, button.dataset.candidateId);
+  });
+
+  closeCandidatePickerBtn?.addEventListener("click", () => {
+    candidatePickerModal?.close();
+  });
+
+  candidatePickerModal?.addEventListener("close", () => {
+    candidatePickerParty = null;
+  });
+
   simPartyPlBtn?.addEventListener("click", () => setSimOddsParty("pl"));
   simPartyPnBtn?.addEventListener("click", () => setSimOddsParty("pn"));
   simModeSwingBtn?.addEventListener("click", () => setSimMode("swing"));
@@ -1098,7 +1203,7 @@ function resetMap() {
 }
 
 function winnerMarkup(party) {
-  const info = PARTIES[party];
+  const info = getPartyDisplay(party);
   return `
     <img
       class="winner-photo"
@@ -1112,6 +1217,136 @@ function winnerMarkup(party) {
       <p>Next Prime Minister · ${info.label}</p>
     </div>
   `;
+}
+
+function renderSelectedCandidateCard(party, container) {
+  if (!container) return;
+
+  const candidate = getSelectedCandidate(party);
+  const partyInfo = PARTIES[party];
+
+  container.className = `selected-candidate selected-candidate-${party}`;
+  container.innerHTML = `
+    <img
+      class="selected-candidate-photo"
+      src="${candidate.image}"
+      alt="${candidate.name}, ${partyInfo.label}"
+      width="72"
+      height="72"
+    />
+    <div class="selected-candidate-info">
+      <p class="party-name">${partyInfo.label}</p>
+      <h3>${candidate.name}</h3>
+      <button type="button" class="btn-change-candidate" data-party="${party}">
+        Change candidate
+      </button>
+    </div>
+  `;
+}
+
+function renderCandidatePickerOption(party, candidate) {
+  const isSelected = selectedCandidates[party] === candidate.id;
+
+  return `
+    <button
+      type="button"
+      class="candidate-picker-option candidate-picker-option-${party}${isSelected ? " is-selected" : ""}"
+      data-candidate-id="${candidate.id}"
+      role="option"
+      aria-selected="${isSelected}"
+    >
+      <img
+        class="candidate-picker-photo"
+        src="${candidate.image}"
+        alt="${candidate.name}"
+        width="64"
+        height="64"
+      />
+      <span class="candidate-picker-name">${candidate.name}</span>
+    </button>
+  `;
+}
+
+function renderCandidatePickerList() {
+  if (!candidatePickerListEl || !candidatePickerParty) return;
+
+  const party = candidatePickerParty;
+  const current = PARTY_CANDIDATES[party].filter(
+    (candidate) => candidate.era === "current"
+  );
+  const past = PARTY_CANDIDATES[party].filter(
+    (candidate) => candidate.era === "past"
+  );
+
+  candidatePickerListEl.innerHTML = `
+    <section class="candidate-picker-section">
+      <h3 class="candidate-picker-section-title">Candidates</h3>
+      <div class="candidate-picker-grid">
+        ${current.map((candidate) => renderCandidatePickerOption(party, candidate)).join("")}
+      </div>
+    </section>
+    ${
+      past.length
+        ? `
+    <section class="candidate-picker-section">
+      <h3 class="candidate-picker-section-title">Past candidates</h3>
+      <div class="candidate-picker-grid">
+        ${past.map((candidate) => renderCandidatePickerOption(party, candidate)).join("")}
+      </div>
+    </section>`
+        : ""
+    }
+  `;
+}
+
+function openCandidatePicker(party) {
+  if (!candidatePickerModal || !PARTY_CANDIDATES[party]) return;
+
+  candidatePickerParty = party;
+  if (candidatePickerTitleEl) {
+    candidatePickerTitleEl.textContent = `Choose ${PARTIES[party].label} candidate`;
+  }
+  renderCandidatePickerList();
+  candidatePickerModal.showModal();
+}
+
+function syncLegendCandidates() {
+  const plLegend = document.getElementById("legend-pl-candidate");
+  const pnLegend = document.getElementById("legend-pn-candidate");
+
+  if (plLegend) {
+    plLegend.textContent = `Partit Laburista (${getSelectedCandidate("pl").name})`;
+  }
+
+  if (pnLegend) {
+    pnLegend.textContent = `Partit Nazzjonalista (${getSelectedCandidate("pn").name})`;
+  }
+}
+
+function setSelectedCandidate(party, candidateId) {
+  const exists = PARTY_CANDIDATES[party]?.some(
+    (candidate) => candidate.id === candidateId
+  );
+  if (!exists) return;
+
+  selectedCandidates[party] = candidateId;
+  renderSelectedCandidates();
+
+  if (candidatePickerModal?.open) {
+    candidatePickerModal.close();
+  }
+}
+
+function renderSelectedCandidates() {
+  renderSelectedCandidateCard(
+    "pl",
+    document.getElementById("selected-pl-candidate")
+  );
+  renderSelectedCandidateCard(
+    "pn",
+    document.getElementById("selected-pn-candidate")
+  );
+  syncLegendCandidates();
 }
 
 function renderDistrictResultRow(row) {
@@ -1168,9 +1403,10 @@ function showElectionResults(options = {}) {
   }
 
   if (plSeats >= MAJORITY) {
+    const plLeader = getSelectedCandidate("pl").name;
     headline.textContent = isSimulation
-      ? `Simulation: ${PARTIES.pl.leader} projected to win`
-      : `${PARTIES.pl.leader} wins`;
+      ? `Simulation: ${plLeader} projected to win`
+      : `${plLeader} wins`;
     seatsSummary.textContent = isSimulation
       ? `Partit Laburista — ${plSeats} of 65 seats projected (${oddsNote})`
       : `Partit Laburista — ${plSeats} of 65 seats (33 needed for a majority)`;
@@ -1178,9 +1414,10 @@ function showElectionResults(options = {}) {
     winnerEl.innerHTML = winnerMarkup("pl");
     electionWinner = "pl";
   } else if (pnSeats >= MAJORITY) {
+    const pnLeader = getSelectedCandidate("pn").name;
     headline.textContent = isSimulation
-      ? `Simulation: ${PARTIES.pn.leader} projected to win`
-      : `${PARTIES.pn.leader} wins`;
+      ? `Simulation: ${pnLeader} projected to win`
+      : `${pnLeader} wins`;
     seatsSummary.textContent = isSimulation
       ? `Partit Nazzjonalista — ${pnSeats} of 65 seats projected (${oddsNote})`
       : `Partit Nazzjonalista — ${pnSeats} of 65 seats (33 needed for a majority)`;
